@@ -43,9 +43,8 @@ public class MyR2dbcRepositoryFactory extends R2dbcRepositoryFactory {
     @Override
     protected Optional<QueryLookupStrategy> getQueryLookupStrategy(final Key key,
             final QueryMethodEvaluationContextProvider evaluationContextProvider) {
-        return Optional.of(new MyQueryLookupStrategy(
-                super.getQueryLookupStrategy(key, evaluationContextProvider).get(),
-                evaluationContextProvider));
+        final var original = super.getQueryLookupStrategy(key, evaluationContextProvider).get();
+        return Optional.of(new MyQueryLookupStrategy(original, evaluationContextProvider));
     }
 
     private class MyQueryLookupStrategy implements QueryLookupStrategy {
@@ -64,8 +63,8 @@ public class MyR2dbcRepositoryFactory extends R2dbcRepositoryFactory {
         public RepositoryQuery resolveQuery(final Method method, final RepositoryMetadata metadata,
                 final ProjectionFactory factory, final NamedQueries namedQueries) {
             if (AnnotationUtils.findAnnotation(method, SqlFile.class) != null) {
-                final String query = readSqlFile(method);
-                final R2dbcQueryMethod queryMethod = new R2dbcQueryMethod(method, metadata, factory,
+                final var query = readSqlFile(method);
+                final var queryMethod = new R2dbcQueryMethod(method, metadata, factory,
                         converter.getMappingContext());
                 return new StringBasedR2dbcQuery(query, queryMethod, databaseClient, converter,
                         expressionParser, evaluationContextProvider);
@@ -74,9 +73,7 @@ public class MyR2dbcRepositoryFactory extends R2dbcRepositoryFactory {
         }
 
         private String readSqlFile(final Method method) {
-            final String sqlFile = "META-INF/"
-                    + method.getDeclaringClass().getName().replace('.', '/')
-                    + "/"
+            final String sqlFile = method.getDeclaringClass().getSimpleName() + "_"
                     + method.getName() + ".sql";
             try (InputStream in = getClass().getClassLoader().getResourceAsStream(sqlFile)) {
                 return new String(in.readAllBytes(), StandardCharsets.UTF_8);

@@ -5,10 +5,10 @@ import org.springframework.data.annotation.Id;
 public final class Msg {
 
     @Id
-    private final Integer id;
+    private final Long id;
     private final String txt;
 
-    public Msg(final Integer id, final String txt) {
+    public Msg(final Long id, final String txt) {
         this.id = id;
         this.txt = txt;
     }
@@ -17,7 +17,7 @@ public final class Msg {
         return new Msg(null, txt);
     }
 
-    public Msg withId(final Integer id) {
+    public Msg withId(final Long id) {
         return new Msg(id, txt);
     }
 
@@ -25,7 +25,7 @@ public final class Msg {
         return new Msg(id, txt);
     }
 
-    public Integer getId() {
+    public Long getId() {
         return id;
     }
 
