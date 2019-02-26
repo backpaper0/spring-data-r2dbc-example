@@ -7,8 +7,10 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.data.r2dbc.function.DatabaseClient;
+import org.springframework.data.r2dbc.function.TransactionalDatabaseClient;
 import org.springframework.data.r2dbc.repository.config.EnableR2dbcRepositories;
 
+import io.r2dbc.spi.ConnectionFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -21,10 +23,13 @@ public class App implements CommandLineRunner {
     }
 
     private final DatabaseClient client;
+    private final TransactionalDatabaseClient clientTx;
     private final MsgRepository repo;
 
-    public App(final DatabaseClient client, final MsgRepository repo) {
+    public App(final DatabaseClient client, final ConnectionFactory factory,
+            final MsgRepository repo) {
         this.client = client;
+        this.clientTx = TransactionalDatabaseClient.create(factory);
         this.repo = repo;
     }
 
@@ -38,12 +43,15 @@ public class App implements CommandLineRunner {
 
         final Mono<Void> inserted1 = client.execute().sql("INSERT INTO msg (txt) VALUES ($1)")
                 .bind("$1", "foo").then();
-        final Mono<Void> inserted2 = client.insert().into(Msg.class).using(Msg.create("bar"))
-                .then();
 
-        final Mono<Msg> inserted3 = repo.save(Msg.create("baz"));
+        final Mono<Msg> inserted2 = repo.save(Msg.create("bar"));
 
-        Stream.of(inserted1, inserted2, inserted3).forEach(Mono::block);
+        //TRANSACTION
+        final Flux<Void> inserted3 = clientTx.inTransaction(
+                client -> client.insert().into(Msg.class).using(Msg.create("baz")).then());
+
+        Stream.of(inserted1, inserted2).forEach(Mono::block);
+        inserted3.collectList().block();
 
         //--------------------------------------------------
         //SELECT
